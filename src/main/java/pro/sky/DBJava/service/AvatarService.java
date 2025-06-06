@@ -8,9 +8,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.logging.Logger;
+
 @Service
 public class AvatarService {
     private final AvatarRepository avatarRepository;
+
+    Logger logger = Logger.getLogger(AvatarService.class.getName());
 
     @Autowired
     public AvatarService(AvatarRepository avatarRepository) {
@@ -18,6 +22,7 @@ public class AvatarService {
     }
 
     public Page<Avatar> findAllAvatars(int page, int size) {
+        logger.info("Was invoked method for get avatars");
         Pageable pageable = PageRequest.of(page, size);
         return avatarRepository.findAll(pageable);
     }
