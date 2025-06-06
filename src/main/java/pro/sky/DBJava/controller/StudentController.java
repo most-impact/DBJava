@@ -7,15 +7,19 @@ import org.springframework.web.bind.annotation.*;
 
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/student")
 public class StudentController {
     private final StudentService studentService;
+    private static final Logger logger = Logger.getLogger(StudentController.class.getName());
+
     public StudentController(StudentService studentService) {
         this.studentService = studentService;
     }
+
+    // Существующие методы остаются без изменений
     @PostMapping
     public Student createStudent(@RequestBody Student student) {
         return studentService.studentCreate(student);
@@ -60,7 +64,6 @@ public class StudentController {
     public List<Student> getLastFiveStudents() {
         return studentService.findLastFiveStudents();
     }
-
     @GetMapping("/names-starting-with-a")
     public List<String> getStudentNamesStartingWithA() {
         return studentService.getStudents()
@@ -71,7 +74,6 @@ public class StudentController {
                 .sorted()
                 .toList();
     }
-
     @GetMapping("/average-age-stream")
     public Double getAverageAgeStream() {
         return studentService.getStudents()
@@ -79,5 +81,81 @@ public class StudentController {
                 .mapToDouble(Student::getAge)
                 .average()
                 .orElse(0.0);
+    }
+
+    // Шаг 1: Эндпоинт для параллельного вывода имен
+    @GetMapping("/print-parallel")
+    public String printNamesParallel() {
+        List<Student> students = studentService.getStudents();
+        if (students.size() < 6) {
+            return "Not enough students (minimum 6 required)";
+        }
+
+        // Основной поток: вывод первых двух имен
+        System.out.println("Main thread - Student 1: " + students.get(0).getName());
+        System.out.println("Main thread - Student 2: " + students.get(1).getName());
+
+        // Первый параллельный поток: имена третьего и четвертого студента
+        Thread thread1 = new Thread(() -> {
+            System.out.println("Thread 1 - Student 3: " + students.get(2).getName());
+            System.out.println("Thread 1 - Student 4: " + students.get(3).getName());
+        });
+
+        // Второй параллельный поток: имена пятого и шестого студента
+        Thread thread2 = new Thread(() -> {
+            System.out.println("Thread 2 - Student 5: " + students.get(4).getName());
+            System.out.println("Thread 2 - Student 6: " + students.get(5).getName());
+        });
+
+        // Запуск потоков
+        thread1.start();
+        thread2.start();
+
+        // Ожидание завершения потоков
+        try {
+            thread1.join();
+            thread2.join();
+        } catch (InterruptedException e) {
+            logger.severe("Thread interrupted: " + e.getMessage());
+        }
+
+        return "Names printed in parallel. Check console for output.";
+    }
+
+    private synchronized void printName(String name, String threadInfo) {
+        System.out.println(threadInfo + ": " + name);
+    }
+
+    @GetMapping("/print-synchronized")
+    public String printNamesSynchronized() {
+        List<Student> students = studentService.getStudents();
+        if (students.size() < 6) {
+            return "Not enough students (minimum 6 required)";
+        }
+
+        printName(students.get(0).getName(), "Main thread - Student 1");
+        printName(students.get(1).getName(), "Main thread - Student 2");
+
+        Thread thread1 = new Thread(() -> {
+            printName(students.get(2).getName(), "Thread 1 - Student 3");
+            printName(students.get(3).getName(), "Thread 1 - Student 4");
+        });
+
+        Thread thread2 = new Thread(() -> {
+            printName(students.get(4).getName(), "Thread 2 - Student 5");
+            printName(students.get(5).getName(), "Thread 2 - Student 6");
+        });
+
+        thread1.start();
+        thread2.start();
+
+        try {
+            thread1.join();
+            thread2.join();
+        } catch (InterruptedException e) {
+            logger.severe("Thread interrupted: " + e.getMessage());
+        }
+
+        return "Names printed synchronized. Check console for output.";
     }
 }
